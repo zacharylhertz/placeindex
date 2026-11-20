@@ -1,0 +1,11 @@
+^LICENSE\.md$
+^data-raw$
+^.*\.Rproj$
+^\.Rproj\.user$
+^vignettes/.*\.Rmd\.orig$
+^vignettes/precompute\.R$
+^README\.Rmd$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$

@@ -1,0 +1,32 @@
+url: ~
+template:
+  bootstrap: 5
+
+reference:
+- title: Residential concentration
+  desc: Block data for places and measures of how concentrated a group is.
+  contents:
+  - starts_with("seg_")
+- title: Composite indices
+  desc: Normalize and combine indicators, and test how ranks depend on the choices.
+  contents:
+  - starts_with("idx_")
+- title: Spatial access
+  desc: Population-weighted origins, travel costs and E2SFCA access scores.
+  contents:
+  - starts_with("acc_")
+- title: Validation
+  desc: Aggregate unit scores to survey units and extract shrunken group effects from multilevel models.
+  contents:
+  - starts_with("val_")
+- title: Data
+  contents:
+  - ca_place_concentration
+
+articles:
+- title: Worked examples
+  navbar: ~
+  contents:
+  - cvra-concentration
+  - library-access
+  - validation-mlm

@@ -1,0 +1,46 @@
+Package: placeindex
+Title: Residential Concentration, Spatial Access and Composite Indices
+    for Places
+Version: 0.0.0.9000
+Authors@R: 
+    person("Zachary Lorico", "Hertz", , "zachary_hertz@berkeley.edu", role = c("aut", "cre"))
+Description: Builds decennial census block data assigned to places,
+    measures how concentrated a group is within each place (dissimilarity,
+    isolation, exposure, and contiguous clusters of majority-group blocks),
+    measures spatial access to sites with limited capacity with the
+    enhanced two-step floating catchment area method, and combines
+    indicators into composite indices with a Monte Carlo
+    analysis of how ranks depend on construction choices. Validation
+    helpers aggregate unit scores to the units a survey identifies and
+    extract shrunken group effects from multilevel models.
+License: MIT + file LICENSE
+URL: https://github.com/zacharylhertz/placeindex
+BugReports: https://github.com/zacharylhertz/placeindex/issues
+Encoding: UTF-8
+Language: en-US
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Depends: 
+    R (>= 4.1.0)
+Imports: 
+    cli (>= 3.6.0),
+    dplyr (>= 1.1.0),
+    igraph,
+    rlang (>= 1.1.0),
+    sf,
+    stats,
+    tidycensus,
+    tidyselect,
+    tigris,
+    utils,
+    withr
+Suggests: 
+    data.table,
+    ggplot2,
+    knitr,
+    lme4,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+LazyData: true

@@ -1,0 +1,192 @@
+---
+title: "Latino concentration and the California Voting Rights Act"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Latino concentration and the California Voting Rights Act}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+<!-- cvra-concentration.Rmd is generated from cvra-concentration.Rmd.orig
+by vignettes/precompute.R, which needs the network and a Census API key.
+Edit the .orig file, not the .Rmd. -->
+
+```{r setup, include = FALSE}
+options(width = 100)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "cvra-",
+  fig.width = 7,
+  fig.height = 5,
+  dpi = 110
+)
+```
+
+Under the California Voting Rights Act, cities switched from at-large to
+district elections for their councils. A switch can only help Latino
+candidates where Latinos live close enough together to form a majority in a
+district. This vignette measures that concentration for five cities with
+2010 census blocks.
+
+The measures use the voting-age population (VAP). Courts look at citizen
+voting-age population, which the Census Bureau does not publish for blocks,
+so VAP is the closest block-level count.
+
+```{r packages, message = FALSE, warning = FALSE}
+library(placeindex)
+library(dplyr)
+library(ggplot2)
+options(tigris_use_cache = TRUE)
+```
+
+## Blocks
+
+The package dataset `ca_place_concentration` lists every California place,
+so it gives the five cities' place codes.
+
+```{r places}
+cities <- paste(c("Palmdale", "West Covina", "Victorville", "Anaheim",
+                  "Modesto"), "city, California")
+places <- ca_place_concentration |>
+  filter(year == 2010, universe == "vap", place_name %in% cities) |>
+  transmute(place_geoid, city = sub(" city, California", "", place_name))
+places
+```
+
+`seg_blocks()` downloads block counts and polygons for the four counties the
+cities lie in and assigns each block to its place.
+
+```{r blocks, message = FALSE}
+blocks <- seg_blocks(
+  "CA", 2010, universe = "vap",
+  county = c("Los Angeles", "San Bernardino", "Orange", "Stanislaus")
+) |>
+  filter(place_geoid %in% places$place_geoid)
+nrow(blocks)
+```
+
+## How concentrated are Latinos?
+
+`seg_measures()` gives the Latino share, two standard segregation measures
+(dissimilarity and isolation) and the share of Latinos who live in
+majority-Latino blocks for each city. It also returns exposure, which for
+two groups is 1 minus isolation, so the table leaves it out.
+
+```{r measures}
+measures <- seg_measures(blocks, by = place_geoid, group = latino,
+                         total = total)
+measures |>
+  left_join(places, by = "place_geoid", relationship = "one-to-one") |>
+  select(city, pop_total, group_share, dissimilarity, isolation,
+         majority_share)
+```
+
+`seg_clusters()` finds contiguous clusters of majority-Latino blocks and
+compares the largest with an ideal district for a five-district council.
+`largest_ratio` above 1 means the largest cluster alone could hold a
+majority-Latino district. `n_districts_floor` adds up the whole districts
+every cluster could hold; it is a rough guide, not a bound.
+
+```{r clusters}
+clusters <- seg_clusters(blocks, by = place_geoid, group = latino,
+                         total = total, n_districts = 5)
+clusters |>
+  left_join(places, by = "place_geoid", relationship = "one-to-one") |>
+  select(city, n_clusters, largest_pop, largest_share, largest_ratio,
+         n_viable, n_districts_floor)
+```
+
+By default, blocks with no residents can join two clusters, because a
+district can include them at no cost in population. Leaving them out is a
+robustness check:
+
+```{r no-bridge}
+seg_clusters(blocks, by = place_geoid, group = latino, total = total,
+             n_districts = 5, bridge_empty = FALSE) |>
+  left_join(places, by = "place_geoid", relationship = "one-to-one") |>
+  select(city, largest_ratio, n_viable, n_districts_floor)
+```
+
+## A concentration index
+
+To rank the cities against the rest of the state, the next step uses
+`ca_place_concentration`, which holds the same measures for every place.
+It keeps places with at least 20,000 adults in 2010 and combines three
+indicators that rise as Latinos become easier to place in majority
+districts: isolation, the share in majority-Latino blocks, and the largest
+cluster relative to an ideal district.
+
+```{r index}
+indicators <- c("isolation", "majority_share", "largest_ratio")
+large_places <- ca_place_concentration |>
+  filter(year == 2010, universe == "vap", pop_total >= 20000)
+nrow(large_places)
+
+index <- large_places |>
+  idx_normalize(all_of(indicators), method = "rank") |>
+  idx_combine(all_of(indicators), name = "concentration") |>
+  mutate(rank = rank(-concentration, ties.method = "min"))
+index |>
+  inner_join(places, by = "place_geoid", relationship = "one-to-one") |>
+  select(city, all_of(indicators), concentration, rank)
+```
+
+The ranks depend on choices: how to normalize, how to weight, and whether
+to average arithmetically or geometrically. `idx_sensitivity()` redraws
+those choices many times and reports each place's median rank with a 90%
+interval.
+
+```{r sensitivity}
+sensitivity <- idx_sensitivity(
+  large_places,
+  cols = all_of(indicators),
+  id = place_geoid,
+  n_sims = 1000,
+  seed = 2010
+)
+sensitivity |>
+  inner_join(places, by = "place_geoid", relationship = "one-to-one") |>
+  select(city, median_rank, rank_lower, rank_upper)
+```
+
+## Map: Palmdale
+
+`seg_cluster_blocks()` labels each block with its cluster, which shows where
+the largest cluster lies.
+
+```{r map, fig.alt = "Map of Palmdale census blocks in 2010 in four classes: the largest majority-Latino cluster, the empty blocks that join it, other majority-Latino blocks, and other blocks.", fig.cap = ""}
+palmdale_id <- places$place_geoid[places$city == "Palmdale"]
+palmdale <- blocks |>
+  filter(place_geoid == palmdale_id) |>
+  seg_cluster_blocks(by = place_geoid, group = latino, total = total) |>
+  mutate(type = case_when(
+    cluster %in% 1 & total > 0 ~ "Largest majority-Latino cluster",
+    cluster %in% 1 ~ "Empty blocks joining it",
+    total > 0 & latino > 0.5 * total ~ "Other majority-Latino blocks",
+    .default = "Other blocks"
+  ))
+ratio <- clusters$largest_ratio[clusters$place_geoid == palmdale_id]
+
+ggplot(palmdale) +
+  geom_sf(aes(fill = type), color = NA) +
+  scale_fill_manual(
+    values = c("Largest majority-Latino cluster" = "#1f5f99",
+               "Empty blocks joining it" = "#a9c6e2",
+               "Other majority-Latino blocks" = "#e39b2d",
+               "Other blocks" = "#e6e6e6"),
+    breaks = c("Largest majority-Latino cluster", "Empty blocks joining it",
+               "Other majority-Latino blocks", "Other blocks"),
+    name = NULL
+  ) +
+  labs(
+    title = sprintf(
+      "Palmdale's largest majority-Latino cluster is %.1f times an ideal district",
+      ratio
+    ),
+    caption = paste("Census blocks, 2010, voting-age population.",
+                    "Ideal district: the city's adults / 5.")
+  ) +
+  theme_void() +
+  theme(legend.position = "bottom", plot.title.position = "plot")
+```
