@@ -21,7 +21,7 @@ remotes::install_github("zacharylhertz/placeindex")
 There are three vignettes using the package and California data:
 
 - `vignette("library-access")` creates a library access score for residents 18-29 in every California Census tract, including uncertainty intervals.
-- `vignette("validation-mlm")` asks whether people with more library access participate more in politics, and tests whether that relationship differs after controlling for religious participation. It reports the smallest detectable effect and ranks counties by how much they differ from a modeled prediction.
+- `vignette("validation-mlm")` asks whether people with more library access participate more in politics, and tests whether that relationship differs by religious attendance. It reports the smallest detectable effect and ranks counties by how much they differ from a modeled prediction.
 - `vignette("cvra-concentration")` asks whether Latino residents in five California cities are sufficiently concentrated to form a potential majority in a city council district, and builds a composite index of concentration.
 
 ## Functions
